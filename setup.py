@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Setup script para Hand Tracking
+Setup script para Traductor de Señas IA
 Funciona en Windows, Mac y Linux
-Instala automáticamente todas las dependencias de forma robusta
+Verifica la versión de Python e instala todas las dependencias (OpenCV, MediaPipe, Sklearn)
 """
 
 import os
@@ -30,24 +30,36 @@ def run_command(command, show_output=False):
         return False, str(e)
 
 def main():
-    print_header("🎯 HAND TRACKING - INSTALACIÓN AUTOMÁTICA")
+    print_header("🎯 TRADUCTOR DE SEÑAS IA - SETUP AUTOMÁTICO")
     
     system = platform.system()
+    python_version = sys.version_info
     print(f"✓ Sistema operativo: {system}")
-    print(f"✓ Python: {sys.version.split()[0]}\n")
+    print(f"✓ Python detectado: {sys.version.split()[0]}\n")
+    
+    # ============= PASO 0: Verificar versión de Python =============
+    print_step(0, "Verificando compatibilidad de Python...")
+    if python_version < (3, 8) or python_version >= (3, 12):
+        print("  ⚠️ ADVERTENCIA: Se recomienda Python 3.8, 3.9, 3.10 o 3.11.")
+        print("  Versiones más antiguas o la 3.12+ pueden tener problemas con MediaPipe.")
+        respuesta = input("  ¿Deseas continuar de todos modos? (s/n): ")
+        if respuesta.lower() != 's':
+            print("\n❌ Instalación abortada. Instala una versión recomendada de Python.")
+            sys.exit(1)
+    print("  ✅ Versión de Python aceptada.\n")
     
     # ============= PASO 1: Crear entorno virtual =============
     print_step(1, "Creando entorno virtual...")
     env_name = "hand_tracking_env"
     
     if os.path.exists(env_name):
-        print(f"   ℹ️  El entorno '{env_name}' ya existe, usando el existente\n")
+        print(f"  ℹ️  El entorno '{env_name}' ya existe, usando el existente\n")
     else:
         success, msg = run_command(f"{sys.executable} -m venv {env_name}")
         if success:
-            print(f"   ✅ Entorno virtual creado correctamente\n")
+            print(f"  ✅ Entorno virtual creado correctamente\n")
         else:
-            print(f"   ❌ Error creando entorno: {msg}")
+            print(f"  ❌ Error creando entorno: {msg}")
             sys.exit(1)
     
     # ============= PASO 2: Configurar comandos según SO =============
@@ -62,47 +74,50 @@ def main():
         python_cmd = f"{env_name}/bin/python"
         activate_cmd = f"source {env_name}/bin/activate"
     
-    print(f"   ✓ Python: {python_cmd}")
-    print(f"   ✓ Pip: {pip_cmd}\n")
+    print(f"  ✓ Python del entorno: {python_cmd}")
+    print(f"  ✓ Pip del entorno: {pip_cmd}\n")
     
     # ============= PASO 3: Actualizar pip =============
-    print_step(3, "Actualizando pip...")
+    print_step(3, "Actualizando administrador de paquetes (pip)...")
     run_command(f"{pip_cmd} install --upgrade pip", show_output=False)
-    print("   ✅ Pip actualizado\n")
+    print("  ✅ Pip actualizado\n")
     
     # ============= PASO 4: Instalar dependencias esenciales =============
-    print_step(4, "Instalando dependencias esenciales...")
+    print_step(4, "Instalando librerías de Visión e IA (Esto puede tardar)...")
     
+    # Lista actualizada con las librerías necesarias para el modelo RandomForest
     essential_packages = [
         ("numpy", "numpy"),
         ("opencv-python", "cv2"),
-        ("mediapipe", "mediapipe")
+        ("mediapipe", "mediapipe"),
+        ("pandas", "pandas"),
+        ("scikit-learn", "sklearn")
     ]
     
     for package_name, import_name in essential_packages:
-        print(f"   📦 Instalando {package_name}...", end=" ", flush=True)
+        print(f"  📦 Instalando {package_name}...", end=" ", flush=True)
         success, msg = run_command(f"{pip_cmd} install {package_name}")
         if success:
             print("✅")
         else:
-            print(f"⚠️ (continuando...)")
+            print(f"⚠️ (Hubo un problema, revisa tu internet)")
     
     print()
     
     # ============= PASO 5: Instalar requirements.txt =============
-    print_step(5, "Instalando dependencias adicionales...")
+    print_step(5, "Verificando dependencias adicionales...")
     
     if os.path.exists("requirements.txt"):
         success, msg = run_command(f"{pip_cmd} install -r requirements.txt")
         if success:
-            print("   ✅ Dependencias adicionales instaladas\n")
+            print("  ✅ Dependencias de requirements.txt instaladas\n")
         else:
-            print("   ⚠️  Algunas dependencias tuvieron advertencias (normal)\n")
+            print("  ⚠️  Algunas dependencias tuvieron advertencias (normal)\n")
     else:
-        print("   ℹ️  No hay requirements.txt (opcional)\n")
+        print("  ℹ️  No hay requirements.txt extra (opcional)\n")
     
     # ============= PASO 6: Verificar instalación =============
-    print_step(6, "Verificando instalación...")
+    print_step(6, "Verificando que la Inteligencia Artificial pueda ejecutarse...")
     
     verification_script = """
 import sys
@@ -110,12 +125,13 @@ try:
     import cv2
     import mediapipe as mp
     import numpy
+    import pandas
+    import sklearn
     
-    # Verificar que mediapipe tiene solutions
     if not hasattr(mp, 'solutions'):
         print("ERROR_NO_SOLUTIONS")
         sys.exit(1)
-    
+        
     print("OK")
     sys.exit(0)
 except ImportError as e:
@@ -131,48 +147,39 @@ except ImportError as e:
     )
     
     if result.returncode == 0 and "OK" in result.stdout:
-        print("   ✅ cv2 (OpenCV) ................. CORRECTAMENTE INSTALADO")
-        print("   ✅ mediapipe .................... CORRECTAMENTE INSTALADO")
-        print("   ✅ numpy ........................ CORRECTAMENTE INSTALADO\n")
+        print("  ✅ OpenCV (Cámara) ................. CORRECTO")
+        print("  ✅ MediaPipe (Manos) ............... CORRECTO")
+        # Agregamos validación de los nuevos paquetes
+        print("  ✅ Pandas & Scikit-Learn (IA) ...... CORRECTO\n")
     elif "ERROR_NO_SOLUTIONS" in result.stdout:
-        print("   ⚠️  MediaPipe instalado pero sin 'solutions'")
-        print("   🔄 Reinstalando mediapipe...", end=" ", flush=True)
+        print("  ⚠️  MediaPipe instalado pero con errores.")
+        print("  🔄 Intentando reparar...", end=" ", flush=True)
         run_command(f"{pip_cmd} uninstall mediapipe -y")
-        run_command(f"{pip_cmd} install mediapipe==0.10.13 --force-reinstall")
+        run_command(f"{pip_cmd} install mediapipe==0.10.14")
         print("✅\n")
     else:
-        print(f"   ⚠️  Verificación completada con advertencias\n")
+        print(f"  ⚠️  Verificación falló. Puede que falte alguna librería.\n  Detalle: {result.stdout.strip()}\n")
     
     # ============= PASO 7: Mostrar instrucciones finales =============
-    print_header("✅ INSTALACIÓN COMPLETADA")
+    print_header("✅ INSTALACIÓN COMPLETADA EXITOSAMENTE")
     
-    print("🚀 PRÓXIMOS PASOS:\n")
+    print("🚀 PARA INICIAR EL TRADUCTOR:\n")
     
     if system == "Windows":
-        print("  Opción 1 - Activar entorno manualmente:")
-        print(f"    {activate_cmd}")
-        print("    python hand_tracking.py\n")
-        
-        print("  Opción 2 - Ejecutar directamente (si existe run.bat):")
-        print("    run.bat\n")
+        print("  Opción 1 - En la terminal:")
+        print(f"    1. Activa el entorno:  {activate_cmd}")
+        print("    2. Ejecuta la cámara:  python app.py  (o el nombre de tu archivo principal)\n")
     else:
-        print("  Opción 1 - Activar entorno manualmente:")
-        print(f"    {activate_cmd}")
-        print("    python hand_tracking.py\n")
-        
-        print("  Opción 2 - Ejecutar directamente (si existe run.sh):")
-        print("    bash run.sh\n")
+        print("  Opción 1 - En la terminal:")
+        print(f"    1. Activa el entorno:  {activate_cmd}")
+        print("    2. Ejecuta la cámara:  python app.py\n")
     
     print("="*70)
     print("💡 TIPS IMPORTANTES:")
-    print("  • Asegúrate de tener la CÁMARA CONECTADA")
-    print("  • Presiona 'q' para SALIR del programa")
-    print("  • Primera ejecución puede ser lenta (cargando modelo IA)")
-    print("  • Si hay problemas, revisa el README.md")
+    print("  • Si clonaste el repositorio sin el modelo (.pkl), primero ejecuta el entrenador.")
+    print("  • Presiona 'q' para SALIR de la ventana de la cámara.")
     print("="*70 + "\n")
     
-    print("✨ ¡TODO LISTO! ¡A DISFRUTAR! ✨\n")
-
 if __name__ == "__main__":
     try:
         main()
